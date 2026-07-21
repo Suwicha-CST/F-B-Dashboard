@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Portfolio Performance — Jul's &amp; Zephyr</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  :root{
+    --bg:#12161C;
+    --surface:#1B212B;
+    --surface-2:#222A36;
+    --line:#2C3542;
+    --gold:#C9A24B;
+    --juls:#C9852E;
+    --zephyr:#3F9FA8;
+    --text:#F1EDE4;
+    --muted:#8B93A0;
+    --pos:#6FBF8B;
+    --neg:#E0645A;
+    --font-display:'Fraunces', serif;
+    --font-body:'Inter', sans-serif;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--text);
+    font-family:var(--font-body);
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1280px;margin:0 auto;padding:32px 28px 64px;}
+
+  header{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-end;
+    flex-wrap:wrap;
+    gap:20px;
+    padding-bottom:28px;
+    border-bottom:1px solid var(--line);
+    margin-bottom:20px;
+  }
+  .eyebrow{
+    font-size:11px;
+    letter-spacing:0.16em;
+    text-transform:uppercase;
+    color:var(--gold);
+    font-weight:600;
+    margin-bottom:8px;
+  }
+  h1{
+    font-family:var(--font-display);
+    font-weight:600;
+    font-size:34px;
+    margin:0;
+    letter-spacing:-0.01em;
+  }
+  .subtitle{color:var(--muted);font-size:14px;margin-top:6px;}
+  .period-note{
+    font-size:12px;
+    color:var(--muted);
+    text-align:right;
+    line-height:1.6;
+  }
+  .period-note strong{color:var(--text);}
+
+  /* upload bar */
+  .upload-bar{
+    display:flex;
+    align-items:center;
+    gap:14px;
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:12px;
+    padding:14px 18px;
+    margin-bottom:24px;
+    flex-wrap:wrap;
+  }
+  .upload-bar .icon{
+    width:36px;height:36px;border-radius:9px;
+    background:var(--surface-2);
+    display:flex;align-items:center;justify-content:center;
+    color:var(--gold);
+    flex-shrink:0;
+  }
+  .upload-copy{flex:1;min-width:200px;}
+  .upload-title{font-size:13.5px;font-weight:600;color:var(--text);}
+  .upload-sub{font-size:12px;color:var(--muted);margin-top:2px;}
+  .upload-status-line{font-size:12px;color:var(--muted);margin-top:2px;}
+  #fileStatus{font-size:12px;color:var(--muted);margin-top:2px;}
+  #fileStatus:empty{margin-top:0;}
+  #fileStatus.ok{color:var(--pos);}
+  #fileStatus.err{color:var(--neg);}
+  .upload-btn{
+    background:var(--gold);
+    color:#1B1200;
+    border:none;
+    font-weight:700;
+    font-size:13px;
+    padding:10px 20px;
+    border-radius:100px;
+    cursor:pointer;
+    white-space:nowrap;
+  }
+  .upload-btn:hover{opacity:0.9;}
+  #fileInput{display:none;}
+
+  .filters{display:flex;gap:8px;margin-bottom:28px;flex-wrap:wrap;}
+  .pill{
+    padding:9px 18px;
+    border-radius:100px;
+    border:1px solid var(--line);
+    background:var(--surface);
+    color:var(--muted);
+    font-size:13px;
+    font-weight:600;
+    cursor:pointer;
+    transition:all .15s ease;
+    display:flex;align-items:center;gap:8px;
+  }
+  .pill .dot{width:8px;height:8px;border-radius:50%;}
+  .pill:hover{border-color:var(--gold);color:var(--text);}
+  .pill.active{background:var(--surface-2);border-color:var(--gold);color:var(--text);}
+
+  .period-row{
+    display:flex;
+    align-items:center;
+    gap:18px;
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:12px;
+    padding:12px 16px;
+    margin-bottom:24px;
+    flex-wrap:wrap;
+  }
+  .date-label{
+    font-size:12.5px;
+    color:var(--muted);
+    display:flex;
+    align-items:center;
+    gap:10px;
+    font-weight:600;
+  }
+  .date-label input[type="date"]{
+    background:var(--surface-2);
+    border:1px solid var(--line);
+    color:var(--text);
+    border-radius:8px;
+    padding:7px 10px;
+    font-family:var(--font-body);
+    font-size:13px;
+    color-scheme:dark;
+  }
+
+  .kpis{
+    display:grid;
+    grid-template-columns:repeat(4,1fr);
+    gap:16px;
+    margin-bottom:28px;
+  }
+  .kpi{
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:20px 22px;
+    position:relative;
+    overflow:hidden;
+  }
+  .kpi-label{
+    font-size:11px;
+    text-transform:uppercase;
+    letter-spacing:0.1em;
+    color:var(--muted);
+    font-weight:600;
+    margin-bottom:10px;
+  }
+  .kpi-value{
+    font-family:var(--font-display);
+    font-size:30px;
+    font-weight:600;
+    line-height:1;
+  }
+  .kpi-sub{
+    font-size:12.5px;
+    margin-top:10px;
+    color:var(--muted);
+  }
+  .kpi-sub.pos{color:var(--pos);}
+  .kpi-sub.neg{color:var(--neg);}
+
+  .grid{
+    display:grid;
+    grid-template-columns:1.6fr 1fr;
+    gap:16px;
+    margin-bottom:16px;
+  }
+  .grid-2{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:16px;
+    margin-bottom:16px;
+  }
+  .card{
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:22px;
+  }
+  .card-title{
+    font-family:var(--font-display);
+    font-size:18px;
+    font-weight:600;
+    margin:0 0 2px;
+  }
+  .card-desc{
+    font-size:12.5px;
+    color:var(--muted);
+    margin:0 0 18px;
+  }
+  .chart-holder{position:relative;height:280px;}
+  .chart-holder.tall{height:340px;}
+
+  .legend-row{display:flex;gap:18px;margin-top:14px;flex-wrap:wrap;}
+  .legend-item{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--muted);}
+  .legend-item .sw{width:10px;height:10px;border-radius:3px;}
+
+  footer{
+    margin-top:24px;
+    padding-top:20px;
+    border-top:1px solid var(--line);
+    font-size:12px;
+    color:var(--muted);
+    line-height:1.7;
+  }
+  footer strong{color:var(--text);}
+
+  @media (max-width:900px){
+    .kpis{grid-template-columns:repeat(2,1fr);}
+    .grid, .grid-2{grid-template-columns:1fr;}
+    .period-note{text-align:left;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div>
+      <div class="eyebrow">Performance Dashboard</div>
+      <h1>Jul's &amp; Zephyr</h1>
+      <div class="subtitle">F&amp;B portfolio revenue, covers &amp; budget performance — consolidated in THB</div>
+    </div>
+    <div class="period-note">
+      Actuals recorded <strong id="periodRange">—</strong><br>
+      Budget compared over the same window
+    </div>
+  </header>
+
+  <div class="upload-bar">
+    <div class="icon">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m7 8 5-5 5 5"/><path d="M5 21h14a2 2 0 0 0 2-2v-5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v5a2 2 0 0 0 2 2Z"/></svg>
+    </div>
+    <div class="upload-copy">
+      <div class="upload-title">Refresh with new data</div>
+      <div class="upload-sub">If opened via a published Claude link, uploading here updates the data for <strong>everyone</strong> who opens that same link — not just your own view.</div>
+      <div class="upload-status-line">Currently showing data through <span id="statusDate">—</span></div>
+      <div id="fileStatus"></div>
+    </div>
+    <input type="file" id="fileInput" accept=".xlsx,.xls">
+    <button class="upload-btn" id="uploadBtn">Upload Excel File</button>
+  </div>
+
+  <div class="filters" id="filterPills"></div>
+  <div class="period-row">
+    <label class="date-label">As of <input type="date" id="asOfDate"></label>
+    <div class="filters" id="periodPills" style="margin:0;"></div>
+  </div>
+
+  <div class="kpis" id="kpiRow"></div>
+
+  <div class="grid">
+    <div class="card">
+      <div class="card-title">Monthly Revenue — Actual vs Budget</div>
+      <div class="card-desc">Bars show actual revenue (stacked by outlet when viewing All Outlets); the line is the budgeted target for the same month</div>
+      <div class="chart-holder tall"><canvas id="monthlyChart"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Outlet Split</div>
+      <div class="card-desc">Share of actual revenue by restaurant</div>
+      <div class="chart-holder tall"><canvas id="outletDonut"></canvas></div>
+      <div class="legend-row" id="outletLegend"></div>
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title">Daily Revenue Trend</div>
+      <div class="card-desc">Day-by-day recorded revenue by outlet</div>
+      <div class="chart-holder"><canvas id="dailyChart"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Lunch vs Dinner</div>
+      <div class="card-desc">Revenue by meal period, per outlet</div>
+      <div class="chart-holder"><canvas id="mealChart"></canvas></div>
+    </div>
+  </div>
+
+  <footer id="footerNote"></footer>
+
+</div>
+
+<script id="dashboard-data-json" type="application/json">__DATA_JSON__</script>
+<script>
+__APP_JS__
+</script>
+</body>
+</html>
