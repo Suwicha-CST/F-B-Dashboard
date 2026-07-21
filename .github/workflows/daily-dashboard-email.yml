@@ -1,0 +1,37 @@
+name: Daily Dashboard Email
+
+on:
+  schedule:
+    # 01:00 UTC = 08:00 Bangkok time (UTC+7), Monday-Friday only
+    # Adjust the hour below if you want a different send time.
+    - cron: '0 1 * * 1-5'
+  workflow_dispatch: {}   # lets you manually trigger a test run from the Actions tab
+
+jobs:
+  send-dashboard-email:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write   # needed so the workflow can commit the regenerated dashboard back to the repo
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install playwright
+          playwright install --with-deps chromium
+
+      - name: Take dashboard screenshot
+        run: python scripts/screenshot.py
+
+      - name: Send email with embedded screenshot
+        env:
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASS: ${{ secrets.SMTP_PASS }}
+          RECIPIENTS: ${{ secrets.RECIPIENTS }}
+        run: python scripts/send_email.py
