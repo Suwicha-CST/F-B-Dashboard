@@ -1,19 +1,14 @@
 import os
-import smtplib
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
-from email.mime.image import MIMEImage
+import base64
+import requests
 
-SMTP_USER = os.environ["SMTP_USER"]
-SMTP_PASS = os.environ["SMTP_PASS"]
+RESEND_API_KEY = os.environ["RESEND_API_KEY"]
 RECIPIENTS = [r.strip() for r in os.environ["RECIPIENTS"].split(",")]
 
 DASHBOARD_URL = "https://suwicha-cst.github.io/F-B-Dashboard/"
 
-msg = MIMEMultipart("related")
-msg["Subject"] = "Jul's & Zephyr — Daily Performance Snapshot"
-msg["From"] = SMTP_USER
-msg["To"] = ", ".join(RECIPIENTS)
+with open("dashboard.png", "rb") as f:
+    image_b64 = base64.b64encode(f.read()).decode("utf-8")
 
 html = f"""
 <html>
@@ -26,17 +21,32 @@ html = f"""
   </body>
 </html>
 """
-msg.attach(MIMEText(html, "html"))
 
-with open("dashboard.png", "rb") as f:
-    img = MIMEImage(f.read())
-    img.add_header("Content-ID", "<dashboard_image>")
-    img.add_header("Content-Disposition", "inline", filename="dashboard.png")
-    msg.attach(img)
+payload = {
+    "from": "Dashboard <onboarding@resend.dev>",  # Resend's default test sender; swap in your own verified domain later if you want
+    "to": RECIPIENTS,
+    "subject": "Jul's & Zephyr — Daily Performance Snapshot",
+    "html": html,
+    "attachments": [
+        {
+            "filename": "dashboard.png",
+            "content": image_b64,
+            "content_id": "dashboard_image",
+        }
+    ],
+}
 
-with smtplib.SMTP("smtp.office365.com", 587) as server:
-    server.starttls()
-    server.login(SMTP_USER, SMTP_PASS)
-    server.sendmail(SMTP_USER, RECIPIENTS, msg.as_string())
+response = requests.post(
+    "https://api.resend.com/emails",
+    headers={
+        "Authorization": f"Bearer {RESEND_API_KEY}",
+        "Content-Type": "application/json",
+    },
+    json=payload,
+)
 
-print("Email sent successfully to:", RECIPIENTS)
+if response.status_code >= 300:
+    raise Exception(f"Resend API error {response.status_code}: {response.text}")
+
+print("Email sent successfully via Resend to:", RECIPIENTS)
+print("Response:", response.json())
