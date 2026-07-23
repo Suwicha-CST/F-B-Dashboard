@@ -2,9 +2,9 @@ name: Daily Dashboard Email
 
 on:
   schedule:
-    # 01:00 UTC = 08:00 Bangkok time (UTC+7), Monday-Friday only
-    # Adjust the hour below if you want a different send time.
-    - cron: '0 1 * * 1-5'
+    # 07:00 UTC = 14:00 (2 PM) Bangkok time (UTC+7), Monday-Friday only
+    # Adjust the hour below if you want a different send time (hour is in UTC).
+    - cron: '0 7 * * 1-5'
   workflow_dispatch: {}   # lets you manually trigger a test run from the Actions tab
 
 jobs:
@@ -23,8 +23,19 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install playwright requests
+          pip install pandas openpyxl playwright requests
           playwright install --with-deps chromium
+
+      - name: Regenerate dashboard from latest Excel data (safety net)
+        run: python scripts/generate_dashboard.py
+
+      - name: Commit updated dashboard (if changed)
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git diff --staged --quiet && echo "No changes to commit" || git commit -m "Auto-regenerate dashboard before daily email"
+          git push
 
       - name: Take dashboard screenshot
         run: python scripts/screenshot.py
