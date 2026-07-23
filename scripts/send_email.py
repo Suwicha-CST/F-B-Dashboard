@@ -14,10 +14,10 @@ html = f"""
 <html>
   <body style="font-family: Arial, sans-serif;">
     <p>Good morning,</p>
-    <p>Here's today's snapshot of the Jul's &amp; Zephyr dashboard:</p>
-    <img src="cid:dashboard_image" style="max-width:700px; width:100%; border:1px solid #ddd;" />
     <p>For the live, interactive version where you can filter by outlet, date, or period:
        <a href="{DASHBOARD_URL}">click here</a></p>
+    <p>Here's today's snapshot of the Jul's &amp; Zephyr dashboard:</p>
+    <img src="cid:dashboard_image" style="max-width:700px; width:100%; border:1px solid #ddd;" />
   </body>
 </html>
 """
