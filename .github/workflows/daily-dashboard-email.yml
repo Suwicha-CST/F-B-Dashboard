@@ -23,7 +23,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install playwright
+          pip install playwright requests
           playwright install --with-deps chromium
 
       - name: Take dashboard screenshot
@@ -31,7 +31,6 @@ jobs:
 
       - name: Send email with embedded screenshot
         env:
-          SMTP_USER: ${{ secrets.SMTP_USER }}
-          SMTP_PASS: ${{ secrets.SMTP_PASS }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
           RECIPIENTS: ${{ secrets.RECIPIENTS }}
         run: python scripts/send_email.py
