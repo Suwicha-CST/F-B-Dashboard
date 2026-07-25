@@ -8,7 +8,7 @@ const COLORS = {
 };
 const BRAND_NAME = { JLD: "Jul's", ZPM: 'Zephyr' };
 const DAY_MS = 24*60*60*1000;
-
+ 
 // Country -> local currency, used to know which FX rate applies to each outlet.
 // Add entries here if outlets are added in new countries.
 const COUNTRY_CURRENCY = {
@@ -17,13 +17,13 @@ const COUNTRY_CURRENCY = {
   'Thailand': 'THB',
 };
 const REPORTING_CURRENCY = 'THB';
-
+ 
 let RAW = null; // { actual: [...], budget: [...], outlets: [...], firstActualDate, lastActualDate }
 let currentOutletFilter = 'all'; // 'all' | 'JLD' | 'ZPM'
 let currentPeriodType = 'DAY'; // 'DAY' | 'MTD' | 'QTD' | 'YTD'
 let currentAsOfDate = null; // 'YYYY-MM-DD', defaults to lastActualDate on load
 const charts = {};
-
+ 
 // ---------- formatting helpers ----------
 function fmtMoney(n){
   const sign = n < 0 ? '-' : '';
@@ -39,7 +39,7 @@ function addDays(dateStr, days){
   d.setUTCDate(d.getUTCDate()+days);
   return d.toISOString().slice(0,10);
 }
-
+ 
 // ---------- excel date helpers ----------
 function toDateStr(v){
   if (v instanceof Date) {
@@ -62,24 +62,24 @@ function toDateStr(v){
   return String(v);
 }
 function toMonthStr(dateStr){ return dateStr.slice(0,7); }
-
+ 
 // ---------- parse raw sheets into RAW (no aggregation yet, but revenue is converted to THB) ----------
 function buildRaw(sheets){
   const revRaw = sheets['Revenue_Daily'] || [];
   const budRaw = sheets['Budget'] || [];
   const outletRaw = sheets['Outlet'] || [];
   const fxRaw = sheets['FX'] || [];
-
+ 
   // FX rates: Currency -> rate to THB (if multiple years given, last one wins)
   const fxRates = {};
   fxRaw.forEach(r => { if (r['Currency']) fxRates[r['Currency']] = Number(r['FX to THB']) || 1; });
   fxRates[REPORTING_CURRENCY] = 1; // THB to THB is always 1
-
+ 
   const outletMap = {};       // Outlet code -> Brand
   const outletCurrency = {};  // Outlet code -> currency
   const outletMeta = [];
   const unmappedCountries = new Set();
-
+ 
   outletRaw.forEach(r => {
     outletMap[r['Outlet']] = r['Brand'];
     const country = r['Country'];
@@ -91,12 +91,12 @@ function buildRaw(sheets){
       'Opening Date': r['Opening Date'] ? toDateStr(r['Opening Date']) : null
     });
   });
-
+ 
   function fxRateFor(outletCode){
     const currency = outletCurrency[outletCode] || REPORTING_CURRENCY;
     return fxRates[currency] !== undefined ? fxRates[currency] : 1;
   }
-
+ 
   const actual = [];
   revRaw.forEach(r => {
     const revVal = r['Revenue'];
@@ -111,11 +111,11 @@ function buildRaw(sheets){
       Covers: Number(r['Covers']) || 0,
     });
   });
-
+ 
   if (actual.length === 0) {
     throw new Error('No recorded (non-blank) Revenue rows found in Revenue_Daily — check the file structure.');
   }
-
+ 
   const budget = [];
   budRaw.forEach(r => {
     const dateStr = toDateStr(r['Date']);
@@ -128,7 +128,7 @@ function buildRaw(sheets){
       BudgetCovers: Number(r['Covers Budget']) || 0,
     });
   });
-
+ 
   const allDates = actual.map(r => r.Date).sort();
   if (unmappedCountries.size) {
     console.warn('Unmapped country -> currency (defaulted to THB, 1:1):', [...unmappedCountries]);
@@ -141,7 +141,7 @@ function buildRaw(sheets){
     unmappedCountries: [...unmappedCountries],
   };
 }
-
+ 
 // ---------- period range resolution (MTD / QTD / YTD, relative to the "as of" date) ----------
 function resolveDateRange(){
   const asOf = currentAsOfDate || RAW.lastActualDate;
@@ -165,11 +165,11 @@ function resolveDateRange(){
   const clampedFrom = fromStr < RAW.firstActualDate ? RAW.firstActualDate : fromStr;
   return { from: clampedFrom, to: asOf };
 }
-
+ 
 function filteredOutlets(){
   return currentOutletFilter === 'all' ? ['JLD','ZPM'] : [currentOutletFilter];
 }
-
+ 
 // ---------- derived aggregates, computed fresh from RAW on every render ----------
 function getFilteredActual(){
   const {from, to} = resolveDateRange();
@@ -181,7 +181,7 @@ function getFilteredBudget(){
   const outlets = filteredOutlets();
   return RAW.budget.filter(r => outlets.includes(r.Outlet) && r.Date >= from && r.Date <= to);
 }
-
+ 
 function computeKPIs(){
   const act = getFilteredActual();
   const bud = getFilteredBudget();
@@ -195,7 +195,7 @@ function computeKPIs(){
   const coversVsBudget = budgetCovers ? (covers-budgetCovers)/budgetCovers : 0;
   return {revenue, covers, avgCheck, budgetRevenue, budgetCovers, budgetAvgCheck, revVsBudget, coversVsBudget};
 }
-
+ 
 function computeMonthlyByOutlet(){
   const act = getFilteredActual();
   const bud = getFilteredBudget();
@@ -208,14 +208,23 @@ function computeMonthlyByOutlet(){
   const budgetByMonth = months.map(m => bud.filter(r=>r.Month===m).reduce((s,r)=>s+r.BudgetRevenue,0));
   return { months, outlets, perOutlet, budgetByMonth };
 }
-
+ 
 function computeDaily(){
-  const act = getFilteredActual();
   const outlets = filteredOutlets();
+  let act;
+  if (currentPeriodType === 'DAY') {
+    // Show the trailing 7 days ending on the selected date, so there's an actual
+    // trend to look at, rather than a single lonely point.
+    const asOf = currentAsOfDate || RAW.lastActualDate;
+    const from = addDays(asOf, -6);
+    act = RAW.actual.filter(r => outlets.includes(r.Outlet) && r.Date >= from && r.Date <= asOf);
+  } else {
+    act = getFilteredActual();
+  }
   const dates = [...new Set(act.map(r=>r.Date))].sort();
   return { dates, outlets, rows: act };
 }
-
+ 
 function computeMealSplit(){
   const act = getFilteredActual();
   const outlets = filteredOutlets();
@@ -225,7 +234,7 @@ function computeMealSplit(){
     Dinner: act.filter(r=>r.Outlet===o && r.MealPeriod==='Dinner').reduce((s,r)=>s+r.Revenue,0),
   }));
 }
-
+ 
 function computeOutletSplit(){
   const act = getFilteredActual();
   const outlets = filteredOutlets();
@@ -234,7 +243,7 @@ function computeOutletSplit(){
     Revenue: act.filter(r=>r.Outlet===o).reduce((s,r)=>s+r.Revenue,0),
   })).filter(r => r.Revenue > 0 || outlets.length <= 1);
 }
-
+ 
 // ---------- UI: filter pills ----------
 function buildOutletPills(){
   const el = document.getElementById('filterPills');
@@ -253,7 +262,7 @@ function buildOutletPills(){
     p.addEventListener('click', () => { currentOutletFilter = p.getAttribute('data-key'); renderAll(); });
   });
 }
-
+ 
 function buildPeriodPills(){
   const el = document.getElementById('periodPills');
   const options = [
@@ -269,12 +278,12 @@ function buildPeriodPills(){
     p.addEventListener('click', () => { currentPeriodType = p.getAttribute('data-key'); renderAll(); });
   });
 }
-
+ 
 document.getElementById('asOfDate').addEventListener('change', (e) => {
   currentAsOfDate = e.target.value || RAW.lastActualDate;
   renderAll();
 });
-
+ 
 // ---------- KPI rendering ----------
 function renderKPIs(){
   const k = computeKPIs();
@@ -302,9 +311,9 @@ function renderKPIs(){
     </div>
   `;
 }
-
+ 
 function destroyChart(id){ if (charts[id]) { charts[id].destroy(); charts[id] = null; } }
-
+ 
 function chartBaseOptions(hideLegendLabelsSmall, stacked){
   return {
     responsive:true,
@@ -327,11 +336,11 @@ function chartBaseOptions(hideLegendLabelsSmall, stacked){
     }
   };
 }
-
+ 
 function renderMonthlyChart(){
   const { months, outlets, perOutlet, budgetByMonth } = computeMonthlyByOutlet();
   const monthLabels = months.map(m => new Date(m+'-01T00:00:00Z').toLocaleDateString('en-US',{month:'short', year:'2-digit', timeZone:'UTC'}));
-
+ 
   const barDatasets = outlets.map(o => ({
     type:'bar',
     label: BRAND_NAME[o]||o,
@@ -341,19 +350,19 @@ function renderMonthlyChart(){
     maxBarThickness:42,
     stack:'actual',
   }));
-
+ 
   const budgetDataset = {
     type:'line', label:'Budget', data: budgetByMonth, borderColor:COLORS.budget, borderDash:[5,4],
     borderWidth:2, pointRadius:3, pointBackgroundColor:COLORS.budget, tension:0.25, fill:false,
   };
-
+ 
   destroyChart('monthly');
   charts.monthly = new Chart(document.getElementById('monthlyChart'), {
     data: { labels: monthLabels, datasets: [...barDatasets, budgetDataset] },
     options: chartBaseOptions(true, true)
   });
 }
-
+ 
 function renderOutletDonut(){
   const rows = computeOutletSplit();
   destroyChart('donut');
@@ -368,9 +377,15 @@ function renderOutletDonut(){
     <div class="legend-item"><span class="sw" style="background:${COLORS[r.Outlet]||'#8B93A0'}"></span>${BRAND_NAME[r.Outlet]||r.Outlet} — ${fmtMoney(r.Revenue)}</div>
   `).join('');
 }
-
+ 
 function renderDailyChart(){
   const { dates, outlets, rows } = computeDaily();
+  const descEl = document.getElementById('dailyChartDesc');
+  if (descEl) {
+    descEl.textContent = currentPeriodType === 'DAY'
+      ? 'Last 7 days ending on the selected date, by outlet'
+      : 'Day-by-day recorded revenue by outlet';
+  }
   destroyChart('daily');
   const datasets = outlets.map(o => ({
     label: BRAND_NAME[o]||o,
@@ -387,7 +402,7 @@ function renderDailyChart(){
     options: chartBaseOptions(false)
   });
 }
-
+ 
 function renderMealChart(){
   const rows = computeMealSplit();
   destroyChart('meal');
@@ -400,7 +415,7 @@ function renderMealChart(){
     options: chartBaseOptions(false)
   });
 }
-
+ 
 function renderFooter(){
   const {from, to} = resolveDateRange();
   const periodLabels = {DAY:'Daily', MTD:'Month to Date', QTD:'Quarter to Date', YTD:'Year to Date'};
@@ -417,7 +432,7 @@ function renderFooter(){
     To refresh with new data, upload a new export using the button above — everything recalculates instantly in your browser and nothing is sent anywhere.
   `;
 }
-
+ 
 function renderAll(){
   buildOutletPills();
   buildPeriodPills();
@@ -431,10 +446,10 @@ function renderAll(){
   document.getElementById('statusDate').textContent = RAW.lastActualDate;
   renderFooter();
 }
-
+ 
 const STORAGE_KEY = 'fb_dashboard_raw_data';
 const hasSharedStorage = (typeof window !== 'undefined' && !!window.storage);
-
+ 
 async function loadSharedData(){
   if (!hasSharedStorage) return null;
   try {
@@ -445,7 +460,7 @@ async function loadSharedData(){
     return null; // key doesn't exist yet, or storage unavailable
   }
 }
-
+ 
 async function saveSharedData(raw, meta){
   if (!hasSharedStorage) return false;
   try {
@@ -460,12 +475,12 @@ async function saveSharedData(raw, meta){
 const fileInput = document.getElementById('fileInput');
 const uploadBtn = document.getElementById('uploadBtn');
 const fileStatus = document.getElementById('fileStatus');
-
+ 
 uploadBtn.addEventListener('click', () => {
   fileInput.value = ''; // reset so selecting the same filename again still fires 'change'
   fileInput.click();
 });
-
+ 
 fileInput.addEventListener('change', async (e) => {
   const file = e.target.files[0];
   if (!file) return;
@@ -484,7 +499,7 @@ fileInput.addEventListener('change', async (e) => {
       document.getElementById('asOfDate').min = RAW.firstActualDate;
       document.getElementById('asOfDate').max = RAW.lastActualDate;
       renderAll();
-
+ 
       if (hasSharedStorage) {
         fileStatus.textContent = `Saving ${file.name} for everyone with this link...`;
         const saved = await saveSharedData(RAW, { fileName: file.name });
@@ -506,7 +521,7 @@ fileInput.addEventListener('change', async (e) => {
   reader.onerror = () => { fileStatus.textContent = 'Error reading file.'; fileStatus.className = 'err'; };
   reader.readAsArrayBuffer(file);
 });
-
+ 
 // ---------- initial load: shared storage first (if available), else embedded default ----------
 (async function init(){
   const embedded = JSON.parse(document.getElementById('dashboard-data-json').textContent);
@@ -514,7 +529,7 @@ fileInput.addEventListener('change', async (e) => {
     fxRates: embedded.fxRates, firstActualDate: embedded.firstActualDate, lastActualDate: embedded.lastActualDate,
     unmappedCountries: [] };
   let sharedNote = '';
-
+ 
   const shared = await loadSharedData();
   if (shared && shared.actual && shared.actual.length) {
     initial = shared;
@@ -522,13 +537,13 @@ fileInput.addEventListener('change', async (e) => {
       ? ` (last updated from ${shared._uploadedFileName} on ${new Date(shared._uploadedAt).toLocaleString()})`
       : '';
   }
-
+ 
   RAW = initial;
   currentAsOfDate = RAW.lastActualDate;
   document.getElementById('asOfDate').min = RAW.firstActualDate;
   document.getElementById('asOfDate').max = RAW.lastActualDate;
   renderAll();
-
+ 
   if (hasSharedStorage) {
     fileStatus.textContent = shared
       ? `Showing shared data${sharedNote}.`
