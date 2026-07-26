@@ -225,7 +225,21 @@
   .chart-holder.tall{height:340px;}
 
   .legend-row{display:flex;gap:18px;margin-top:14px;flex-wrap:wrap;}
+  .legend-row-overlay{
+    position:absolute;
+    top:0;
+    right:0;
+    display:flex;
+    gap:16px;
+    flex-wrap:wrap;
+    z-index:2;
+  }
   .legend-item{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--muted);}
+  .legend-row-overlay .legend-item{
+    background:rgba(27,33,43,0.85);
+    padding:3px 9px 3px 7px;
+    border-radius:100px;
+  }
   .legend-item .sw{width:10px;height:10px;border-radius:3px;}
 
   footer{
@@ -300,14 +314,18 @@
     <div class="card">
       <div class="card-title">Daily Revenue Trend</div>
       <div class="card-desc" id="dailyChartDesc">Day-by-day recorded revenue by outlet</div>
-      <div class="chart-holder"><canvas id="dailyChart"></canvas></div>
-      <div class="legend-row" id="dailyChartLegend"></div>
+      <div class="chart-holder">
+        <div class="legend-row-overlay" id="dailyChartLegend"></div>
+        <canvas id="dailyChart"></canvas>
+      </div>
     </div>
     <div class="card">
       <div class="card-title">Lunch vs Dinner</div>
       <div class="card-desc">Revenue by meal period, per outlet</div>
-      <div class="chart-holder"><canvas id="mealChart"></canvas></div>
-      <div class="legend-row" id="mealChartLegend"></div>
+      <div class="chart-holder">
+        <div class="legend-row-overlay" id="mealChartLegend"></div>
+        <canvas id="mealChart"></canvas>
+      </div>
     </div>
   </div>
 
