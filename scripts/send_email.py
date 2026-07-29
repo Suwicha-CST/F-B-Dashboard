@@ -1,15 +1,20 @@
 import os
-import base64
-import requests
-
-RESEND_API_KEY = os.environ["RESEND_API_KEY"]
+import smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+from email.mime.image import MIMEImage
+ 
+SMTP_USER = os.environ["SMTP_USER"]
+SMTP_PASS = os.environ["SMTP_PASS"]
 RECIPIENTS = [r.strip() for r in os.environ["RECIPIENTS"].split(",")]
-
+ 
 DASHBOARD_URL = "https://suwicha-cst.github.io/F-B-Dashboard/"
-
-with open("dashboard.png", "rb") as f:
-    image_b64 = base64.b64encode(f.read()).decode("utf-8")
-
+ 
+msg = MIMEMultipart("related")
+msg["Subject"] = "Jul's & Zephyr — Daily Performance Snapshot"
+msg["From"] = SMTP_USER
+msg["To"] = ", ".join(RECIPIENTS)
+ 
 html = f"""
 <html>
   <body style="font-family: Arial, sans-serif;">
@@ -21,32 +26,17 @@ html = f"""
   </body>
 </html>
 """
-
-payload = {
-    "from": "Dashboard <onboarding@resend.dev>",  # Resend's default test sender; swap in your own verified domain later if you want
-    "to": RECIPIENTS,
-    "subject": "Jul's & Zephyr — Daily Performance Snapshot",
-    "html": html,
-    "attachments": [
-        {
-            "filename": "dashboard.png",
-            "content": image_b64,
-            "content_id": "dashboard_image",
-        }
-    ],
-}
-
-response = requests.post(
-    "https://api.resend.com/emails",
-    headers={
-        "Authorization": f"Bearer {RESEND_API_KEY}",
-        "Content-Type": "application/json",
-    },
-    json=payload,
-)
-
-if response.status_code >= 300:
-    raise Exception(f"Resend API error {response.status_code}: {response.text}")
-
-print("Email sent successfully via Resend to:", RECIPIENTS)
-print("Response:", response.json())
+msg.attach(MIMEText(html, "html"))
+ 
+with open("dashboard.png", "rb") as f:
+    img = MIMEImage(f.read())
+    img.add_header("Content-ID", "<dashboard_image>")
+    img.add_header("Content-Disposition", "inline", filename="dashboard.png")
+    msg.attach(img)
+ 
+with smtplib.SMTP("smtp.gmail.com", 587) as server:
+    server.starttls()
+    server.login(SMTP_USER, SMTP_PASS)
+    server.sendmail(SMTP_USER, RECIPIENTS, msg.as_string())
+ 
+print("Email sent successfully to:", RECIPIENTS)
