@@ -1,19 +1,15 @@
 import os
-import smtplib
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
-from email.mime.image import MIMEImage
+import base64
+import requests
 
-SMTP_USER = os.environ["SMTP_USER"]
-SMTP_PASS = os.environ["SMTP_PASS"]
+BREVO_API_KEY = os.environ["BREVO_API_KEY"]
+SENDER_EMAIL = os.environ["SENDER_EMAIL"]  # the address you verified in Brevo
 RECIPIENTS = [r.strip() for r in os.environ["RECIPIENTS"].split(",")]
 
 DASHBOARD_URL = "https://suwicha-cst.github.io/F-B-Dashboard/"
 
-msg = MIMEMultipart("related")
-msg["Subject"] = "Jul's & Zephyr — Daily Performance Snapshot"
-msg["From"] = SMTP_USER
-msg["To"] = ", ".join(RECIPIENTS)
+with open("dashboard.png", "rb") as f:
+    image_b64 = base64.b64encode(f.read()).decode("utf-8")
 
 html = f"""
 <html>
@@ -22,21 +18,33 @@ html = f"""
     <p>Here's today's snapshot of the Jul's &amp; Zephyr dashboard:<br>
        For the live, interactive version where you can filter by outlet, date, or period:
        <a href="{DASHBOARD_URL}">click here</a></p>
-    <img src="cid:dashboard_image" style="max-width:700px; width:100%; border:1px solid #ddd;" />
+    <img src="cid:dashboard.png" style="max-width:700px; width:100%; border:1px solid #ddd;" />
   </body>
 </html>
 """
-msg.attach(MIMEText(html, "html"))
 
-with open("dashboard.png", "rb") as f:
-    img = MIMEImage(f.read())
-    img.add_header("Content-ID", "<dashboard_image>")
-    img.add_header("Content-Disposition", "inline", filename="dashboard.png")
-    msg.attach(img)
+payload = {
+    "sender": {"email": SENDER_EMAIL},
+    "to": [{"email": r} for r in RECIPIENTS],
+    "subject": "Jul's & Zephyr — Daily Performance Snapshot",
+    "htmlContent": html,
+    "attachment": [
+        {"content": image_b64, "name": "dashboard.png"}
+    ],
+}
 
-with smtplib.SMTP("smtp-mail.outlook.com", 587) as server:
-    server.starttls()
-    server.login(SMTP_USER, SMTP_PASS)
-    server.sendmail(SMTP_USER, RECIPIENTS, msg.as_string())
+response = requests.post(
+    "https://api.brevo.com/v3/smtp/email",
+    headers={
+        "api-key": BREVO_API_KEY,
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+    },
+    json=payload,
+)
 
-print("Email sent successfully to:", RECIPIENTS)
+if response.status_code >= 300:
+    raise Exception(f"Brevo API error {response.status_code}: {response.text}")
+
+print("Email sent successfully via Brevo to:", RECIPIENTS)
+print("Response:", response.json())
