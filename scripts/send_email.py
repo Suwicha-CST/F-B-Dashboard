@@ -2,8 +2,7 @@ import os
 import base64
 import requests
 
-BREVO_API_KEY = os.environ["BREVO_API_KEY"]
-SENDER_EMAIL = os.environ["SENDER_EMAIL"]  # the address you verified in Brevo
+RESEND_API_KEY = os.environ["RESEND_API_KEY"]
 RECIPIENTS = [r.strip() for r in os.environ["RECIPIENTS"].split(",")]
 
 DASHBOARD_URL = "https://suwicha-cst.github.io/F-B-Dashboard/"
@@ -18,33 +17,36 @@ html = f"""
     <p>Here's today's snapshot of the Jul's &amp; Zephyr dashboard:<br>
        For the live, interactive version where you can filter by outlet, date, or period:
        <a href="{DASHBOARD_URL}">click here</a></p>
-    <img src="cid:dashboard.png" style="max-width:700px; width:100%; border:1px solid #ddd;" />
+    <img src="cid:dashboard_image" style="max-width:700px; width:100%; border:1px solid #ddd;" />
   </body>
 </html>
 """
 
 payload = {
-    "sender": {"email": SENDER_EMAIL},
-    "to": [{"email": r} for r in RECIPIENTS],
+    "from": "Dashboard <onboarding@resend.dev>",
+    "to": RECIPIENTS,
     "subject": "Jul's & Zephyr — Daily Performance Snapshot",
-    "htmlContent": html,
-    "attachment": [
-        {"content": image_b64, "name": "dashboard.png"}
+    "html": html,
+    "attachments": [
+        {
+            "filename": "dashboard.png",
+            "content": image_b64,
+            "content_id": "dashboard_image",
+        }
     ],
 }
 
 response = requests.post(
-    "https://api.brevo.com/v3/smtp/email",
+    "https://api.resend.com/emails",
     headers={
-        "api-key": BREVO_API_KEY,
+        "Authorization": f"Bearer {RESEND_API_KEY}",
         "Content-Type": "application/json",
-        "Accept": "application/json",
     },
     json=payload,
 )
 
 if response.status_code >= 300:
-    raise Exception(f"Brevo API error {response.status_code}: {response.text}")
+    raise Exception(f"Resend API error {response.status_code}: {response.text}")
 
-print("Email sent successfully via Brevo to:", RECIPIENTS)
+print("Email sent successfully via Resend to:", RECIPIENTS)
 print("Response:", response.json())
