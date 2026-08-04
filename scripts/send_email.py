@@ -2,7 +2,9 @@ import os
 import base64
 import requests
 
-RESEND_API_KEY = os.environ["RESEND_API_KEY"]
+MAILJET_API_KEY = os.environ["MAILJET_API_KEY"]
+MAILJET_SECRET_KEY = os.environ["MAILJET_SECRET_KEY"]
+SENDER_EMAIL = os.environ["SENDER_EMAIL"]  # the address you verified in Mailjet
 RECIPIENTS = [r.strip() for r in os.environ["RECIPIENTS"].split(",")]
 
 DASHBOARD_URL = "https://suwicha-cst.github.io/F-B-Dashboard/"
@@ -23,30 +25,32 @@ html = f"""
 """
 
 payload = {
-    "from": "Dashboard <onboarding@resend.dev>",
-    "to": RECIPIENTS,
-    "subject": "Jul's & Zephyr — Daily Performance Snapshot",
-    "html": html,
-    "attachments": [
+    "Messages": [
         {
-            "filename": "dashboard.png",
-            "content": image_b64,
-            "content_id": "dashboard_image",
+            "From": {"Email": SENDER_EMAIL, "Name": "Dashboard"},
+            "To": [{"Email": r} for r in RECIPIENTS],
+            "Subject": "Jul's & Zephyr — Daily Performance Snapshot",
+            "HTMLPart": html,
+            "InlinedAttachments": [
+                {
+                    "ContentType": "image/png",
+                    "Filename": "dashboard.png",
+                    "ContentID": "dashboard_image",
+                    "Base64Content": image_b64,
+                }
+            ],
         }
-    ],
+    ]
 }
 
 response = requests.post(
-    "https://api.resend.com/emails",
-    headers={
-        "Authorization": f"Bearer {RESEND_API_KEY}",
-        "Content-Type": "application/json",
-    },
+    "https://api.mailjet.com/v3.1/send",
+    auth=(MAILJET_API_KEY, MAILJET_SECRET_KEY),
     json=payload,
 )
 
 if response.status_code >= 300:
-    raise Exception(f"Resend API error {response.status_code}: {response.text}")
+    raise Exception(f"Mailjet API error {response.status_code}: {response.text}")
 
-print("Email sent successfully via Resend to:", RECIPIENTS)
+print("Email sent successfully via Mailjet to:", RECIPIENTS)
 print("Response:", response.json())
