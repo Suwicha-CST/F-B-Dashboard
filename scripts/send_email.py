@@ -15,7 +15,7 @@ with open("dashboard.png", "rb") as f:
 html = f"""
 <html>
   <body style="font-family: Arial, sans-serif;">
-    <p>Good morning,</p>
+    <p>Good afternoon,</p>
     <p>Here's today's snapshot of the Jul's &amp; Zephyr dashboard:<br>
        For the live, interactive version where you can filter by outlet, date, or period:
        <a href="{DASHBOARD_URL}">click here</a></p>
