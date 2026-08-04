@@ -29,12 +29,6 @@ jobs:
       - name: Regenerate dashboard from latest Excel data (safety net)
         run: python scripts/generate_dashboard.py
 
-      - name: Commit and Push updated dashboard
-        uses: stefanzweifel/git-auto-commit-action@v5
-        with:
-          commit_message: "Auto-regenerate dashboard before daily email"
-          file_pattern: 'index.html'
-
       - name: Take dashboard screenshot
         run: python scripts/screenshot.py
 
