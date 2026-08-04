@@ -2,9 +2,9 @@ name: Daily Dashboard Email
 
 on:
   schedule:
-    # 04:59 UTC = 11:59 AM Bangkok time (UTC+7), Monday-Friday only.
+    # 05:01 UTC = 12:01 PM Bangkok time (UTC+7), Monday-Friday only.
     # Timing isn't guaranteed by GitHub - some delay is possible.
-    - cron: '59 4 * * 1-5'
+    - cron: '01 5 * * 1-5'
   workflow_dispatch: {}   # lets you manually trigger a test run from the Actions tab
 
 jobs:
@@ -29,13 +29,11 @@ jobs:
       - name: Regenerate dashboard from latest Excel data (safety net)
         run: python scripts/generate_dashboard.py
 
-      - name: Commit updated dashboard (if changed)
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add index.html
-          git diff --staged --quiet && echo "No changes to commit" || git commit -m "Auto-regenerate dashboard before daily email"
-          git push
+      - name: Commit and Push updated dashboard
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "Auto-regenerate dashboard before daily email"
+          file_pattern: 'index.html'
 
       - name: Take dashboard screenshot
         run: python scripts/screenshot.py
