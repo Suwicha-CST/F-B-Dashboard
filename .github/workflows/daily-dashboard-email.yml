@@ -2,7 +2,7 @@ name: Daily Dashboard Email
 
 on:
   schedule:
-    # 04:59 UTC = 11:59 AM Bangkok time (UTC+7), Monday-Friday only.
+    # 05:01 UTC = 12:01 AM Bangkok time (UTC+7), Monday-Friday only.
     # Timing isn't guaranteed by GitHub - some delay is possible.
     - cron: '59 4 * * 1-5'
   workflow_dispatch: {}   # lets you manually trigger a test run from the Actions tab
