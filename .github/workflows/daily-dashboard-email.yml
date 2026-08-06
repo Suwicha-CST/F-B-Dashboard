@@ -1,11 +1,12 @@
 name: Daily Dashboard Email
 
 on:
-  schedule:
-    # 05:01 UTC = 12:01 PM Bangkok time (UTC+7), Monday-Friday only.
-    # Timing isn't guaranteed by GitHub - some delay is possible.
-    - cron: '59 4 * * 1-5'
-  workflow_dispatch: {}   # lets you manually trigger a test run from the Actions tab
+  workflow_dispatch: {}   # triggered externally via GitHub API for exact-time delivery (see cron-job.org setup)
+  # NOTE: no `schedule:` trigger here on purpose. GitHub's own scheduler has shown
+  # multi-hour delays (up to ~7 hours observed), so exact-time delivery is handled
+  # by an external trigger (cron-job.org) calling this workflow's dispatch API
+  # instead. Do not add a schedule: block back here without removing the
+  # external trigger first, or you'll get duplicate emails again.
 
 jobs:
   send-dashboard-email:
