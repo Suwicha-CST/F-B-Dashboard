@@ -25,7 +25,7 @@ jobs:
       - name: Install dependencies
         run: |
           pip install pandas openpyxl playwright requests
-          playwright install --with-deps chromium
+          python -m playwright install chromium
 
       - name: Regenerate dashboard from latest Excel data (safety net)
         run: python scripts/generate_dashboard.py
